@@ -186,7 +186,7 @@ class _MyAppState extends State<MyApp> {
   _prinCpclCode(BuildContext context, String mac, String textPrint) async {
     try {
       String result = await ZprinterCPCL.printText(mac, textPrint);
-      showAlertDialog(context, "Berhasil", "Print Telah Selesai");
+      showAlertDialog(context, "Berhasil", result);
     } on PlatformException catch (e) {
       showAlertDialog(context, e.code, e.message);
       print("_prinCpclCode " + e.toString());
