@@ -9,7 +9,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
-
+import com.zebra.sdk.comm.BluetoothConnection;
 import com.zebra.sdk.comm.BluetoothConnectionInsecure;
 import com.zebra.sdk.comm.Connection;
 import com.zebra.sdk.comm.ConnectionException;
@@ -62,6 +62,7 @@ public class ZprinterCPCLPlugin extends Activity implements FlutterPlugin, Metho
         if (!mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            
         } else {
             isEnableBluetooth = true;
         }
@@ -133,60 +134,54 @@ public class ZprinterCPCLPlugin extends Activity implements FlutterPlugin, Metho
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            connection = new BluetoothConnectionInsecure(macAddress);
+            Connection connection = new BluetoothConnection(macAddress);
             try {
                 connection.open();
                 ZebraPrinter printer = ZebraPrinterFactory.getInstance(connection);
-
-
                 PrinterStatus printerStatus = printer.getCurrentStatus();
                 // printerStatusMessage = printerStatus.toString();
-
                 if (printerStatus.isReadyToPrint) {
                     System.out.println("Ready To Print");
+                    System.out.println(printerStatus.printMode);
                     connection.write(textPrint.getBytes());
                     successPrint = true;
-                } else {
-                    successPrint = false;
-                    PrinterStatusMessages statusMessage = new PrinterStatusMessages(printerStatus);
-                    String[] statusMessages = statusMessage.getStatusMessage();
-                    String joinedStatusMessage = "";
-                    for (int i = 0; i < statusMessages.length; i++) {
-                        printerStatusMessage += statusMessages[i] + ";";
-                    }
-                    System.out.println("Cannot Print: " + printerStatusMessage);
                 }
-//                else if (printerStatus.isPaused) {
-//                    successPrint = false;
-//                    printerStatusMessage = "Cannot Print because the printer is paused.";
-//                } else if (printerStatus.isHeadOpen) {g
-//                    successPrint = false;
-//                    printerStatusMessage = "Cannot Print because the printer head is open.";
-//                } else if (printerStatus.isPaperOut) {
-//                    successPrint = false;
-//                    printerStatusMessage = "Cannot Print because the paper is out.";
-//                } else {
-//                    successPrint = false;
-//                    printerStatusMessage = "Cannot Print.";
-//                }
+                //  else {
+                //     successPrint = false;
+                //     PrinterStatusMessages statusMessage = new PrinterStatusMessages(printerStatus);
+                //         System.out.println("paperOut : "+printerStatus.isPaperOut);
+                //     String[] statusMessages = statusMessage.getStatusMessage();
+                //     String joinedStatusMessage = "";
+                //     for (int i = 0; i < statusMessages.length; i++) {
+                //         printerStatusMessage += statusMessages[i] + ";";
+                //     }
+                //     System.out.println("Cannot Print: " + printerStatusMessage);
+                // }
+               else if (printerStatus.isPaused) {
+                   successPrint = false;
+                   printerStatusMessage = "Cannot Print because the printer is paused.";
+               } else if (printerStatus.isHeadOpen) {
+                   successPrint = false;
+                   printerStatusMessage = "Cannot Print because the printer head is open.";
+               } else if (printerStatus.isPaperOut) {
+                   successPrint = false;
+                   printerStatusMessage = "Cannot Print because the paper is out.";
+               } else {
+                   successPrint = false;
+                   printerStatusMessage = "Cannot Print.";
+               }
+                connection.close();
             } catch (ConnectionException e) {
                 System.out.println(e.getMessage());
                 printerStatusMessage = e.getMessage();
             } catch (Exception e) {
                 System.out.println(e.getMessage());
                 printerStatusMessage = e.getMessage();
-            } finally {
-                try {
-                    connection.close();
-                } catch (ConnectionException e) {
-                    e.printStackTrace();
-                }
-
-            }
+            } 
             if (successPrint) {
                 result.success("Berhasil Di Print");
             } else {
-                result.error("Gagal Print", printerStatusMessage, null);
+                result.error("Gagal Print", printerStatusMessage, "");
             }
 
         } else {
@@ -194,36 +189,6 @@ public class ZprinterCPCLPlugin extends Activity implements FlutterPlugin, Metho
         }
     }
 
-    private boolean checkStatusPrint(Connection connection) {
-        System.out.println("checkStatusPrint start");
-        try {
-
-            System.out.println(connection.isConnected());
-            ZebraPrinter printer = ZebraPrinterFactory.getInstance(connection);
-            PrinterStatus printerStatus = printer.getCurrentStatus();
-            if (printerStatus.isReadyToPrint) {
-                System.out.println("Ready To Print");
-                return true;
-            } else if (printerStatus.isPaused) {
-                printerStatusMessage = "Cannot Print because the printer is paused.";
-                return false;
-            } else if (printerStatus.isHeadOpen) {
-                printerStatusMessage = "Cannot Print because the printer head is open.";
-            } else if (printerStatus.isPaperOut) {
-                printerStatusMessage = "Cannot Print because the paper is out.";
-            } else {
-                printerStatusMessage = "Cannot Print.";
-            }
-            System.out.println(printerStatusMessage);
-            return false;
-        } catch (ConnectionException e) {
-            System.out.println(e.getMessage());
-        } catch (ZebraPrinterLanguageUnknownException e) {
-            System.out.println(e.getMessage());
-        }
-
-        return false;
-    }
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
@@ -243,12 +208,10 @@ public class ZprinterCPCLPlugin extends Activity implements FlutterPlugin, Metho
                         // Open the connection - physical connection is established here.
                         connection.open();
                         ZebraPrinter printer = ZebraPrinterFactory.getInstance(connection);
-
                         PrinterStatus printerStatus = printer.getCurrentStatus();
                         if (printerStatus.isReadyToPrint) {
                             System.out.println("Ready To Print");
                             connection.write(dataPrint.getBytes());
-
                         } else if (printerStatus.isPaused) {
                             System.out.println("Cannot Print because the printer is paused.");
                         } else if (printerStatus.isHeadOpen) {

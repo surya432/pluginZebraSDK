@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/ZprinterCPCL.iml" filepath="$PROJECT_DIR$/.idea/modules/ZprinterCPCL.iml" group="ZprinterCPCL" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.suprama.ZprinterCPCL-ZprinterCPCL.iml" filepath="$PROJECT_DIR$/.idea/modules/com.suprama.ZprinterCPCL-ZprinterCPCL.iml" group="ZprinterCPCL" />
     </modules>
   </component>
 </project>

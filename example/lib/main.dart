@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:ZprinterCPCL/ZprinterCPCL.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(MyApp());
@@ -35,20 +36,7 @@ class _MyAppState extends State<MyApp> {
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> initPlatformState() async {
-    bool checkBluetoothIsEnable = false;
-    try {
-      checkBluetoothIsEnable = await ZprinterCPCL.checkBluetoothIsEnable;
-    } on PlatformException catch (e) {
-      print("initPlatformState" + e.message);
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    // if (!mounted) return;
-    setState(() {
-      _checkBluetoothIsEnable = checkBluetoothIsEnable;
-    });
+    checkBluetoothIsEnable();
   }
 
   @override
@@ -94,11 +82,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   Widget buildItemList(List<dynamic> snapshot) {
-    String cpclData = "! 0 200 200 210 1\r\n" +
-        "TEXT 4 0 30 40 This is a CPCL test.\r\n" +
-        "FORM\r\n" +
-        "PRINT\r\n";
-
+    String cpclData =
+        '! 0 200 200 20 1\r\nTEXT 5 0 0 0 12345678901234567890123456789\r\nPRINT\r\n';
     return Container(
       constraints: new BoxConstraints(
         minHeight: 90.0,
@@ -117,7 +102,6 @@ class _MyAppState extends State<MyApp> {
             child: FlatButton(
               onPressed: () async {
                 // setState(() => isShowDevices = false);
-
                 await _prinCpclCode(context, mac, cpclData);
                 // await _getPrinterTest(mac);
               },
@@ -142,17 +126,42 @@ class _MyAppState extends State<MyApp> {
   }
 
   checkBluetoothIsEnable() async {
-    try {
-      bool isEnableBluetooth = await ZprinterCPCL.checkBluetoothIsEnable;
-      setState(() {
-        _checkBluetoothIsEnable = isEnableBluetooth;
-      });
-    } on PlatformException catch (e) {
-      print("checkBluetoothIsEnable" + e.message);
-      setState(() {
-        _checkBluetoothIsEnable = false;
-      });
+    if (await Permission.location.isGranted ||
+        await Permission.locationAlways.isGranted ||
+        await Permission.locationWhenInUse.isGranted) {
+      try {
+        bool isEnableBluetooth = await ZprinterCPCL.checkBluetoothIsEnable;
+        setState(() {
+          _checkBluetoothIsEnable = isEnableBluetooth;
+        });
+      } on PlatformException catch (e) {
+        print("checkBluetoothIsEnable" + e.message);
+        setState(() {
+          _checkBluetoothIsEnable = false;
+        });
+      }
+    } else {
+      await [
+        Permission.location,
+        Permission.locationAlways,
+        Permission.locationWhenInUse,
+        Permission.storage,
+      ].request();
+      if (await Permission.location.isPermanentlyDenied ||
+          await Permission.locationWhenInUse.isPermanentlyDenied ||
+          await Permission.locationAlways.isPermanentlyDenied ||
+          await Permission.storage.isPermanentlyDenied) {
+        openAppSettings();
+        setState(() {
+          _checkBluetoothIsEnable = false;
+        });
+      } else {
+        setState(() {
+          _checkBluetoothIsEnable = true;
+        });
+      }
     }
+    // openAppSettings();
   }
 
   showAlertDialog(BuildContext context, String title, String body) {
@@ -177,6 +186,7 @@ class _MyAppState extends State<MyApp> {
     // show the dialog
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return alert;
       },
@@ -186,10 +196,12 @@ class _MyAppState extends State<MyApp> {
   _prinCpclCode(BuildContext context, String mac, String textPrint) async {
     try {
       String result = await ZprinterCPCL.printText(mac, textPrint);
-      showAlertDialog(context, "Berhasil", result);
+      // showAlertDialog(context, "Berhasil", result);
+      Scaffold.of(context).showSnackBar(SnackBar(content: Text(result)));
     } on PlatformException catch (e) {
-      showAlertDialog(context, e.code, e.message);
-      print("_prinCpclCode " + e.toString());
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text(e.message),
+      ));
     }
   }
 }
